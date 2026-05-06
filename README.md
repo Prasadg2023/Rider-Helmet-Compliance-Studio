@@ -64,3 +64,10 @@ streamlit run app.py
 
 - This repository should not usually include `venv/`, `runs/`, or large dataset folders.
 - If you want to share trained weights, upload the chosen `.pt` file separately or through a release.
+
+## Author
+**Prasad Karade**
+### Eamil : karadeprasad023@gmail.com
+### GitHub : https://github.com/Prasadg2023
+### LinkedIn : https://www.linkedin.com/in/prasad-karade-641799399/
+
