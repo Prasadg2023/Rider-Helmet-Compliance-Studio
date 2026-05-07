@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import cv2
 import numpy as np
 from PIL import Image
 import streamlit as st
@@ -12,6 +11,7 @@ st.set_page_config(page_title="Rider Helmet Compliance Studio", layout="wide")
 ROOT = Path(__file__).resolve().parent
 RUNS_DIR = ROOT / "runs" / "detect"
 SAMPLE_DIR = ROOT / "JPEGImages"
+MODEL_PATH = ROOT / "best.pt"
 CLASS_LABELS = {0: "Rider With Helmet", 1: "Rider Without Helmet"}
 
 
@@ -197,11 +197,15 @@ def inject_styles() -> None:
 
 
 def available_models() -> dict[str, Path]:
+    if MODEL_PATH.exists():
+        return {"bundled_best.pt": MODEL_PATH}
     candidates = sorted(RUNS_DIR.glob("helmet_model*/weights/best.pt"))
     return {f"{path.parents[1].name}  |  {path.stat().st_mtime_ns}": path for path in candidates}
 
 
 def available_samples(limit: int = 40) -> list[Path]:
+    if not SAMPLE_DIR.exists():
+        return []
     return sorted(
         [path for path in SAMPLE_DIR.iterdir() if path.suffix.lower() in {".jpg", ".jpeg", ".png"}]
     )[:limit]
@@ -229,18 +233,6 @@ def run_prediction(model: YOLO, image: Image.Image, conf: float, iou: float):
         used_fallback = True
 
     return result, result.plot(), used_fallback
-
-
-def capture_desktop_webcam() -> Image.Image | None:
-    camera = cv2.VideoCapture(0)
-    if not camera.isOpened():
-        return None
-    ok, frame = camera.read()
-    camera.release()
-    if not ok or frame is None:
-        return None
-    return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-
 
 def summarize_predictions(result) -> tuple[int, int, list[dict[str, str]]]:
     boxes = result.boxes
@@ -311,9 +303,12 @@ selected_model_path = model_lookup[selected_label]
 confidence = st.sidebar.slider("Confidence", 0.1, 1.0, 0.4, 0.05)
 iou = st.sidebar.slider("IoU Threshold", 0.1, 1.0, 0.45, 0.05)
 show_table = st.sidebar.toggle("Show Detection Table", value=True)
-input_mode = st.sidebar.radio("Input Mode", ["Upload", "Sample", "Webcam", "Desktop Webcam"], index=0)
-
 sample_paths = available_samples()
+input_modes = ["Upload", "Webcam"]
+if sample_paths:
+    input_modes.insert(1, "Sample")
+input_mode = st.sidebar.radio("Input Mode", input_modes, index=0)
+
 selected_sample = "None"
 if input_mode == "Sample":
     selected_sample = st.sidebar.selectbox("Quick Sample", ["None"] + [path.name for path in sample_paths], index=0)
@@ -322,14 +317,10 @@ model = load_model(str(selected_model_path))
 
 uploaded_file = None
 camera_file = None
-desktop_capture = False
 if input_mode == "Upload":
     uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
 elif input_mode == "Webcam":
     camera_file = st.camera_input("Capture From Webcam")
-elif input_mode == "Desktop Webcam":
-    desktop_capture = st.sidebar.button("Capture Desktop Camera Frame", use_container_width=True)
-    st.sidebar.caption("Uses your local webcam through OpenCV and captures a single frame each time.")
 
 selected_image = None
 selected_name = None
@@ -339,11 +330,6 @@ if uploaded_file is not None:
 elif camera_file is not None:
     selected_image = Image.open(camera_file).convert("RGB")
     selected_name = "Webcam Capture"
-elif input_mode == "Desktop Webcam" and desktop_capture:
-    selected_image = capture_desktop_webcam()
-    selected_name = "Desktop Webcam"
-    if selected_image is None:
-        st.error("Could not read from the local webcam. Make sure no other app is using it.")
 elif selected_sample != "None":
     sample_path = next(path for path in sample_paths if path.name == selected_sample)
     selected_image = Image.open(sample_path).convert("RGB")
@@ -360,8 +346,6 @@ with top_right:
 if selected_image is None:
     if input_mode == "Webcam":
         st.info("Allow camera access and capture a frame to start detection.")
-    elif input_mode == "Desktop Webcam":
-        st.info("Click the sidebar button to capture a frame from your local webcam.")
     elif input_mode == "Sample":
         st.info("Choose a sample image from the sidebar to start detection.")
     else:
@@ -412,7 +396,7 @@ st.markdown('<div class="section-shell">', unsafe_allow_html=True)
 st.subheader("Session Notes")
 st.write(
     f"Model file: `{selected_model_path}`. "
-    f"This model is intended for rider or head scenes, not standalone helmet product photos. "
+    f"This cloud app uses the bundled trained model and is intended for rider or head scenes, not standalone helmet product photos. "
     f"Use the sidebar to compare sample images, tune thresholds, and inspect how stable the predictions feel."
 )
 st.markdown("</div>", unsafe_allow_html=True)
