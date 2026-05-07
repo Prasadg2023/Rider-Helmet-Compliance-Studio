@@ -65,6 +65,8 @@ streamlit run app.py
 - This repository should not usually include `venv/`, `runs/`, or large dataset folders.
 - If you want to share trained weights, upload the chosen `.pt` file separately or through a release.
 
+## Live demo : http://rider-helmet-compliance-studio-65qxnuvlngunjs3c7m7tgv.streamlit.app/
+
 ## Author
 **Prasad Karade**
 ### Eamil : karadeprasad023@gmail.com
