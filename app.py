@@ -15,6 +15,15 @@ MODEL_PATH = ROOT / "best.pt"
 CLASS_LABELS = {0: "Rider With Helmet", 1: "Rider Without Helmet"}
 
 
+def display_model_name(model_path: Path) -> str:
+    if model_path == MODEL_PATH:
+        return "bundled_best"
+    try:
+        return model_path.parents[1].name
+    except IndexError:
+        return model_path.stem
+
+
 def inject_styles() -> None:
     st.markdown(
         """
@@ -337,7 +346,7 @@ elif selected_sample != "None":
 
 top_left, top_mid, top_right = st.columns(3)
 with top_left:
-    info_card("Active Model", selected_model_path.parents[1].name, "Newest trained model appears first.")
+    info_card("Active Model", display_model_name(selected_model_path), "Bundled model is used for cloud deployment.")
 with top_mid:
     info_card("Confidence", f"{confidence:.2f}", "Raise it to reduce weak rider detections.")
 with top_right:
